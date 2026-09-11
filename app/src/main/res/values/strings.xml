@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">SoundSkin</string>
+    <string name="accessibility_service_description">Lets SoundSkin intercept the hardware volume keys so it can show a custom animated HUD instead of the system volume dialog. Does not read screen content.</string>
+</resources>
