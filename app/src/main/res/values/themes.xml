@@ -1,3 +1,7 @@
 <resources>
-    <style name="Theme.SoundSkin" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Compose draws the whole UI; this only sets the window behind it so
+         there's no white flash in dark mode while the app starts. -->
+    <style name="Theme.SoundSkin" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@android:color/white</item>
+    </style>
 </resources>

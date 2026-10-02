@@ -1,81 +1,24 @@
-# SoundSkin — Project 4 / 6
+# SoundSkin
 
-Animated custom volume HUD overlay, replacing the stock system volume dialog. Native Android, Kotlin.
+Replaces Android's volume panel with an animated HUD in one of eight skins: Minimal, Neon, Retro VU, Wave, Dots, Ring, Pulse and Spectrum. Kotlin + Jetpack Compose.
 
-## Important — how this actually works (read before you start)
-There's no public API for a third-party app to suppress the system volume dialog.
-The one non-root technique that actually works — and what every "custom volume
-panel" app on the Play Store uses — is an **AccessibilityService with
-`canRequestFilterKeyEvents="true"`**. That flag lets the service see hardware key
-events (like the volume rocker) before the rest of the system does. SoundSkin's
-service intercepts `KEYCODE_VOLUME_UP`/`KEYCODE_VOLUME_DOWN`, adjusts the stream
-itself via `AudioManager.adjustStreamVolume(..., flags = 0)` (deliberately omitting
-`FLAG_SHOW_UI`, which is what normally triggers the stock dialog), consumes the key
-event so the system never sees it, and shows our own animated HUD instead.
-
-This means the user has to explicitly enable an Accessibility Service — Android
-shows a real permission-style warning dialog for that ("this app can observe your
-actions..."), because the API is powerful and Android wants users to know it's
-turned on. That's expected and unavoidable for this feature; the README below and
-the in-app string explain to the user exactly why it's needed and that it's limited
-to key events, not screen content.
-
-## What's included here (the actual code)
+## Build
+Open the folder in Android Studio and run, or from a terminal:
 ```
-SoundSkin/
-├── build.gradle.kts, settings.gradle.kts, gradle.properties
-└── app/
-    ├── build.gradle.kts
-    └── src/main/
-        ├── AndroidManifest.xml
-        ├── java/com/soundskin/app/
-        │   ├── MainActivity.kt
-        │   ├── data/ (SkinStyle enum, DataStore PrefsStore)
-        │   ├── accessibility/VolumeKeyAccessibilityService.kt
-        │   ├── hud/
-        │   │   ├── HudOverlayService.kt     (owns the overlay window, auto-hide timer)
-        │   │   └── VolumeHudView.kt         (Canvas + ValueAnimator — all 3 skins)
-        │   └── ui/HomeScreen.kt             (permission gates + live skin preview)
-        └── res/
-            ├── values/ (strings.xml, themes.xml)
-            └── xml/volume_accessibility_config.xml
+gradlew assembleDebug
 ```
 
-## What YOU need to add locally
-1. Open in Android Studio — generates `gradle/wrapper/`, `local.properties`, pulls
-   Compose/DataStore dependencies, same as the previous two projects.
-2. Launcher icon via Image Asset — cosmetic, skipped here.
-3. On-device: grant "draw over other apps" AND enable the Accessibility Service —
-   both have a button on the Home screen that deep-links to the right settings page.
+## Set up on the phone (once)
+Open SoundSkin and tap **Open Accessibility settings**. Find SoundSkin (under *Installed* / *Downloaded apps*) and switch it on. That's the only permission needed.
 
-## How the pieces fit together
-- **VolumeKeyAccessibilityService** — the interception point. `onKeyEvent` fires
-  first on `ACTION_DOWN`, adjusts the real stream, then starts `HudOverlayService`
-  with the new level and returns `true` to swallow the event.
-- **HudOverlayService** — a short-lived foreground service. Each key press resets a
-  1.5s auto-hide timer, so holding the rocker down keeps the HUD visible
-  continuously rather than flickering.
-- **VolumeHudView** — one Canvas view, three `onDraw` paths keyed off `SkinStyle`:
-  - **Minimal**: a single rounded bar, animated width via `ValueAnimator`.
-  - **Neon**: same bar, drawn twice — a `BlurMaskFilter`-blurred glow pass underneath
-    a crisp gradient pass on top, for the glow effect.
-  - **Retro VU**: 16 discrete LED-style segments (green → yellow → red as they fill),
-    plus a white "peak hold" marker that lags behind and decays slowly, like a real
-    hardware VU meter.
-- **HomeScreen** embeds a live `VolumeHudView` via `AndroidView` so switching skins
-  shows an instant preview at a fixed 70% level, without needing to press a real key.
+## Using it
+- Press a volume key and your HUD appears instead of the system panel.
+- **Test** animates the preview so you can try skins without pressing keys.
+- Pick a **skin** (each card is a live preview) and an accent **color**.
+- **Behavior**: HUD position (top / middle / bottom), which stream the keys control when nothing is playing (media or ringer), how long the HUD stays up, percentage on/off, and a haptic tick per step.
+- The switch on the status card pauses SoundSkin, and the stock panel comes back instantly without touching Accessibility settings.
 
-## Known v0.1 limitations (matches the roadmap's scope)
-- Only `STREAM_MUSIC` is intercepted for now — ringtone/alarm/notification streams
-  still show the stock dialog. Extending to those streams is straightforward
-  (same `adjustStreamVolume` call with a different stream constant) whenever you
-  want it, just say the word.
-- If the "Custom HUD enabled" switch is off, volume keys fall through to default
-  system behavior — useful as a quick kill switch without disabling the
-  Accessibility Service entirely.
-- No haptic tick per segment yet on the Retro VU skin — a nice, cheap addition later
-  (could reuse a lot of what HaptiKit already does with `VibrationEffect`, worth
-  connecting the two eventually).
+Calls, media and the ringer are detected automatically: during a call the keys change call volume, while music plays they change media volume, and otherwise they change whatever you chose under *Behavior*.
 
-## Next when you're ready
-Tell me when this one's running and I'll move on to **LockForge**.
+## How it works
+Android has no API for replacing the volume panel, so SoundSkin uses an accessibility service that can see hardware key events first (the same approach every custom volume-panel app uses). It changes the volume itself without asking the system to show its UI, then draws the HUD as an accessibility overlay. That needs no "draw over other apps" permission and no persistent notification. The service only listens for the two volume keys and can't read screen content.
